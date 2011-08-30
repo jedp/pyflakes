@@ -54,10 +54,21 @@ def check(codeString, filename):
         # Okay, it's syntactically valid.  Now check it.
         w = checker.Checker(tree, filename)
         w.messages.sort(lambda a, b: cmp(a.lineno, b.lineno))
+        warnings = 0
         for warning in w.messages:
+            if skip_warning(warning):
+                continue
             print warning
-        return len(w.messages)
+            warnings += 1
+        return warnings
 
+def skip_warning(warning):
+    # quick dirty hack, just need to keep the line in the warning
+    line = open(warning.filename).readlines()[warning.lineno-1]
+    return skip_line(line)
+
+def skip_line(line):
+    return line.rstrip().endswith('# pyflakes.ignore')
 
 def checkPath(filename):
     """
