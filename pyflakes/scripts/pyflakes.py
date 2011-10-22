@@ -105,7 +105,11 @@ def main():
     
     (options, args) = parser.parse_args()
     warnings = 0
-    if args:
+    if not args:
+        args = ['.']
+    if '<stdin>' in args:
+        warnings += check(sys.stdin.read(), '<stdin>', options)
+    else:
         for arg in args:
             if os.path.isdir(arg):
                 for dirpath, dirnames, filenames in os.walk(arg):
@@ -114,8 +118,6 @@ def main():
                             warnings += checkPath(os.path.join(dirpath, filename), options)
             else:
                 warnings += checkPath(arg, options)
-    else:
-        warnings += check(sys.stdin.read(), '<stdin>', options)
     if options.quiet:
         sys.stdout.write("\n")
     raise SystemExit(warnings > 0)
