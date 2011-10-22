@@ -6,10 +6,11 @@ Implementation of the command-line I{pyflakes} tool.
 import sys
 import os
 import _ast
+import optparse
 
 checker = __import__('pyflakes.checker').checker
 
-def check(codeString, filename):
+def check(codeString, filename, options):
     """
     Check the Python source given by C{codeString} for flakes.
 
@@ -19,6 +20,7 @@ def check(codeString, filename):
     @param filename: The name of the file the source came from, used to report
         errors.
     @type filename: C{str}
+    @type options: object from optparse
 
     @return: The number of warnings emitted.
     @rtype: C{int}
@@ -58,8 +60,15 @@ def check(codeString, filename):
         for warning in w.messages:
             if skip_warning(warning):
                 continue
-            print warning
+            if options and not options.quiet:
+                print warning
             warnings += 1
+        if options and options.quiet:
+            if warnings:
+                sys.stdout.write('F')
+            else:
+                sys.stdout.write('.')
+            sys.stdout.flush()
         return warnings
 
 def skip_warning(warning):
@@ -70,32 +79,36 @@ def skip_warning(warning):
 def skip_line(line):
     return line.rstrip().endswith('# pyflakes.ignore')
 
-def checkPath(filename):
+def checkPath(filename, options=None):
     """
     Check the given path, printing out any warnings detected.
 
     @return: the number of warnings printed
     """
     try:
-        return check(file(filename, 'U').read() + '\n', filename)
+        return check(file(filename, 'U').read() + '\n', filename, options)
     except IOError, msg:
         print >> sys.stderr, "%s: %s" % (filename, msg.args[1])
         return 1
 
 
 def main():
+    parser = optparse.OptionParser(usage='usage: %prog [options] module')
+    parser.add_option('-q', '--quiet', action='store_true', dest='quiet', help='run in a quiet mode', default=False)
+    
+    (options, args) = parser.parse_args()
     warnings = 0
-    args = sys.argv[1:]
     if args:
         for arg in args:
             if os.path.isdir(arg):
                 for dirpath, dirnames, filenames in os.walk(arg):
                     for filename in filenames:
                         if filename.endswith('.py'):
-                            warnings += checkPath(os.path.join(dirpath, filename))
+                            warnings += checkPath(os.path.join(dirpath, filename), options)
             else:
-                warnings += checkPath(arg)
+                warnings += checkPath(arg, options)
     else:
-        warnings += check(sys.stdin.read(), '<stdin>')
-
+        warnings += check(sys.stdin.read(), '<stdin>', options)
+    if options.quiet:
+        sys.stdout.write("\n")
     raise SystemExit(warnings > 0)
