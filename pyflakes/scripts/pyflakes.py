@@ -58,7 +58,7 @@ def check(codeString, filename, options):
         w.messages.sort(lambda a, b: cmp(a.lineno, b.lineno))
         warnings = 0
         for warning in w.messages:
-            if skip_warning(warning):
+            if skip_warning(warning, options.ignore_messages if options else []):
                 continue
             if options and not options.quiet:
                 print warning
@@ -71,7 +71,13 @@ def check(codeString, filename, options):
             sys.stdout.flush()
         return warnings
 
-def skip_warning(warning):
+def skip_warning(warning, ignore_messages):
+    if ignore_messages:
+        # these are post-substitued messages that are asked to be skipped
+        message = warning.message % warning.message_args
+        if message in ignore_messages:
+            return True
+    
     # quick dirty hack, just need to keep the line in the warning
     line = open(warning.filename).readlines()[warning.lineno-1]
     return skip_line(line)
@@ -95,6 +101,7 @@ def checkPath(filename, options=None):
 def main():
     parser = optparse.OptionParser(usage='usage: %prog [options] module')
     parser.add_option('-q', '--quiet', action='store_true', dest='quiet', help='run in a quiet mode', default=False)
+    parser.add_option('-i', '--ignore', action='append', dest='ignore_messages', help='specific messages to ignore', default=[])
     
     (options, args) = parser.parse_args()
     warnings = 0
