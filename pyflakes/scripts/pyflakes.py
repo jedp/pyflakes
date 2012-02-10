@@ -71,6 +71,18 @@ def check(codeString, filename, options):
             sys.stdout.flush()
         return warnings
 
+def memoize_lines(fn):
+    data = {}
+    def memo(filename):
+        if filename not in data:
+            data[filename] = fn(filename)
+        return data[filename]
+    return memo
+
+@memoize_lines
+def source_lines(filename):
+    return open(filename).readlines()
+
 def skip_warning(warning, ignore_messages):
     if ignore_messages:
         # these are post-substitued messages that are asked to be skipped
@@ -79,7 +91,7 @@ def skip_warning(warning, ignore_messages):
             return True
     
     # quick dirty hack, just need to keep the line in the warning
-    line = open(warning.filename).readlines()[warning.lineno-1]
+    line = source_lines(warning.filename)[warning.lineno-1]
     return skip_line(line)
 
 def skip_line(line):
